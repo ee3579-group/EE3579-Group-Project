@@ -8,5 +8,5 @@ void setup() {
 
 void loop() {
   float val = an_inp.map_input();  //Call function from class and assign to float
-  Serial.pintln(val);              //Print Val to new line
+  Serial.println(val);              //Print Val to new line
 }
