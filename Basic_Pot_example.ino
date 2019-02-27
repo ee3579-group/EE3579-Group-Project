@@ -3,7 +3,7 @@ potWmap an_inp;                     //Class.Object
 
 void setup() {
   Serial.begin(9600);               //Baud Rate
-  an_inp.setup_pot(A0,-1,1);        //(Input Pin, Lower Parameter, Upper Parameter)
+  an_inp.setup_pot(A0,100,255);        //(Input Pin, Lower Parameter, Upper Parameter)
 }
 
 void loop() {
