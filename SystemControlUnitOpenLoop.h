@@ -30,8 +30,6 @@ class SpeedControlOpenLoop{
 	
 	public:
 		// constructor
-		SpeedControlOpenLoop(){} // default constructor
-		
 		SpeedControlOpenLoop() // constructor with default arguments 
 		{
 			// these are the default values for intervals between: 
@@ -67,7 +65,7 @@ class SpeedControlOpenLoop{
 		return PWM;
 	}
 
-		}
+		//}
 		
 
 };

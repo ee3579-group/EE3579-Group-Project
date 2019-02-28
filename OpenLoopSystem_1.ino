@@ -1,9 +1,10 @@
 #include "OpenLoopSystem.h"
+#include "Check_timer.h"
 
 // this is the open loop system 
 OpenLoopSystem testsystem;
 PID_System pid_test;
-
+controller_act2 controller;
 
 void setup()
 {
@@ -37,19 +38,32 @@ void setup()
   
   Serial.begin(9600);
 
- //pid_test.set_gain_parameters(1,0.01,0);
-  //pid_test.set_ref_control_interval_ms(1000);
-  //pid_test.set_bounds(0,150);
+ pid_test.set_gain_parameters(1,0.01,0);
+  pid_test.set_ref_control_interval_ms(100);
+  pid_test.set_bounds(0,255);
+  controller.setup_controller(50);
 }
 
 
 void loop()
 {
-  testsystem.CheckInputsAndControlMotor();
-  //int RPM = testsystem.getRPM();
+  int PWM_val_pass;
+  testsystem.CheckInputsAndControlMotor_1();
+  int RPM = testsystem.getRPM();
+  if (controller.isTimeToTakeMeasurement())
+  {
+    int PWM_val=  pid_test.PID_PWM(4800,RPM);
+    PWM_val_pass = PWM_val;
+  //Serial.println(PWM_val);
+  //pid_test.set_echopidcontrol(1);
+  //pid_test.get_echopidcontrol();
+  }
+  //Serial.println(PWM_val_pass);
+  testsystem.setPWM(PWM_val_pass);
+  
   //int PWM_val=  pid_test.PID_PWM(4800,RPM);
   //testsystem.setPWM(PWM_val);
-  //Serial.println(RPM);
-  //pid_test.set_echopidcontrol(1);
+  //Serial.println(PWM_val);
+  pid_test.set_echopidcontrol(1);
   //pid_test.get_echopidcontrol();
 }
