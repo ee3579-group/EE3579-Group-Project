@@ -6,6 +6,10 @@
 #include <InterruptBasedSpeedMeasure.h>
 #include <DCmotor.h>
 #include <SystemControlUnitOpenLoop.h>
+#include <Closed_Loop_PID.h>
+#include <Check_timer.h>
+
+int target_val;
 
 class OpenLoopSystem {
 protected:
@@ -20,6 +24,14 @@ protected:
 	// the motor
 	HBridgeDCmotor motor;
 
+	PID pid_motor;
+
+	// PID control
+
+	int MAX_RPM = 6000;
+
+	InterruptSpeedMeasure_SMA interrupt;
+
 	// the speedometer (it computes "moving-averaged" speed)
 	InterruptSpeedMeasure_SMA speedometer;
 
@@ -30,11 +42,12 @@ protected:
 	bool verbose;
 
 	// these keep track of the internal variables are all the 
-	int current_RPM, curr_PWM, target_RPM;
+	int curr_PWM, target_RPM;
 
 	// default valus
 	static const int DEFAULT_MIN_RPM = 60;
 	static const int DEFAULT_MAX_RPM = 200;
+
 
 	void update_target_RPM()
 	{
@@ -76,6 +89,8 @@ protected:
 
 		if (success)
 		{
+			int RPM = getRPM();
+
 			switch (in_smpl_cmd) {
 			case switch_on:
 				if (verbose)
@@ -92,6 +107,31 @@ protected:
 					Serial.println("Motor Reverse");
 				motor.changedir();
 				break;
+			case thirty_percent:
+				if (verbose) {
+					Serial.println("Motor speed 30%");
+					target_val = MAX_RPM * 0.3;
+				}
+				
+
+				break;
+			case fifty_percent:
+				if (verbose) {
+					Serial.println("Motor speed 50%");
+					target_val = 3000;
+				}
+				//PWM_val = pid_motor.PID_PWM(3000, RPM);
+				//motor.setSpeedPWM(PWM_val);
+				
+				break;
+			case eighty_percent:
+				if (verbose) {
+					Serial.println("Motor speed 80%");
+					target_val = 4800;
+					//PWM_val = pid_motor.PID_PWM(4800, RPM);
+					//motor.setSpeedPWM(PWM_val);
+				}
+				break;
 			default:
 				if (verbose)
 					Serial.println("Unknown Button Pressed");
@@ -104,6 +144,8 @@ protected:
 				Serial.println("");
 		}
 	}
+
+	
 
 	void print_internal_vals()
 	{
@@ -126,7 +168,7 @@ protected:
 			max_RPM = DEFAULT_MAX_RPM;
 			verbose = false;
 			target_RPM = DEFAULT_MIN_RPM;
-
+			interrupt.setupSpeedMeasure(int_0);
 			// by default the motor is off;
 			motor.stop();
 			curr_PWM = motor.getSpeedPWM();
@@ -138,6 +180,13 @@ protected:
 			// can set the size of the moving average (otherwise, the default size is 10)
 			int smasize = 5;
 			speedometer.setupSMAarray(smasize);
+		}
+
+		double current_RPM;
+
+		int get_target()
+		{
+			return target_val;
 		}
 
 		// this sets the interval between: 
@@ -228,7 +277,7 @@ protected:
 			}//if(controller.isTimeToAdjustSpeed())
 		}
 
-		int getRPM()
+		double getRPM()
 		{
 			current_RPM = speedometer.getRPMandUpdate();
 			return current_RPM;
@@ -393,6 +442,119 @@ protected:
 			error_sum = 0.0;
 		}
 
+	};
+
+	class Task_3 {
+	protected:
+		PID_System PID;
+		OpenLoopSystem OLS;
+		IntervalCheckTimer Time;
+		InterruptSpeedMeasure_SMA interrupt;
+
+	public:
+		Task_3()
+		{
+			interrupt.setupSpeedMeasure(int_0);
+		}
+		double rise_time;															//Global Variable for rist time
+		double peak_time; 															//Global Variable for peak time
+		double min_time; 															//Global Variable for peak time
+		double settling_time;
+		int peak_val;																//Global Variable for peak value
+		int min_val;																//Global Variable for peak value
+		bool peak_val_flag;
+		bool min_val_flag;
+
+
+		double rise_time_fun(int Target_Speed, int current_output)														//Function To Return Value at 90% of target
+		{
+			double g_rise_time;
+			long timer = millis();											//Start timer
+			//int current_output = OLS.getRPM();									//Obtain Current PWM output
+			//int Target_Speed = OLS.get_target();								//Obtain Target speed
+			if ((double)current_output >= (double)Target_Speed * 0.9)				//If pid-pwm is called and 90% target...
+			{
+				double rise_time = timer;
+				g_rise_time = rise_time;
+			}
+			return g_rise_time;														//Return to allow external access
+		}
+
+		double peak_vals_fun(int Target_Speed, int& current_output)														//Function to record peak value, and time of incident
+		{
+			int current_RPM;
+			Time.setInterCheck(50);
+			long timer = millis();											//Start timer					
+															//Obtain Current RPM
+			int prev_RPM = current_output;														//Record RPM
+			if (Time.isMinChekTimeElapsed() == true)
+			{
+				current_RPM = current_output;
+			}
+			if (current_RPM >= prev_RPM)						//If measured value is greater than previous value...
+			{
+				peak_val = current_RPM;													//Record Speed
+			}
+			
+			peak_time = timer;														//Record Time
+			peak_val_flag = true;													//Peak Value Flag is tripped
+			
+			return peak_val;
+		}
+
+		double min_vals_fun(int Target_Speed, int current_output)
+		{
+			int current_RPM;
+			long timer;
+			Time.setInterCheck(50);
+			if (peak_val_flag)
+				timer = millis();										//Start timer					
+			int RPM = current_output;												//Obtain Current RPM
+			int prev_RPM = RPM;													//Record RPM
+			if (Time.isMinChekTimeElapsed() == true)
+			{
+				current_RPM = current_output;
+			}									//Do it again									
+			if (current_RPM < prev_RPM)											//If measured value is less than previous value...
+				min_val = current_RPM;												//Record Value
+			min_time = timer;													//Record Time
+			return min_val;														//Return to allow external access		
+		}
+
+		double settling_time_fun(int Target_Speed, int current_output)
+		{
+			long timer = millis();										//Start timer	
+			int Current_RPM = current_output;										//Obtain Current RPM
+			int Target_RPM = Target_Speed;								//Obtain Target RPM
+			//If value is within 10% tollerances, and minumum flag is tripped
+			if (((double)Current_RPM == 1.1*(double)Target_RPM || (double)Current_RPM == 0.9*(double)Target_RPM) && min_val_flag)
+				return settling_time;												//Return to allow external access
+		}
+
+		void print_task_3_vals(int Target_Speed, int current_output)												//Function to print to serial monitor
+		{
+			int inp_target_speed = Target_Speed;
+			int inp_current_output = current_output;
+
+			Serial.println("Rise Time: ");
+			Serial.println(rise_time_fun(inp_target_speed, inp_current_output));
+			
+			Serial.println("Peak Value: ");
+			Serial.println(peak_vals_fun(inp_target_speed, inp_current_output));
+			
+			Serial.println("Time Of Last Peak Value: ");
+			Serial.println(peak_time);
+
+			Serial.println("Minimum Settling Value: ");
+			Serial.println(min_vals_fun(inp_target_speed, inp_current_output));
+
+			Serial.println("Minimum Settling Time: ");
+			Serial.println(min_time);
+
+			Serial.println("Settling Time: ");
+			Serial.println(settling_time_fun(inp_target_speed, inp_current_output));
+			
+		}
 	};
 
 #endif
