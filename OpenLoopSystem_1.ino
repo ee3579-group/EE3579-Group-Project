@@ -5,6 +5,7 @@
 OpenLoopSystem testsystem;
 PID_System pid_test;
 controller_act2 controller;
+Task_3 pid_test2;
 
 void setup()
 {
@@ -14,9 +15,11 @@ void setup()
 
   // add three pushbuttons (pin and label)
   // change the pin number as appropriate but keep the labels (switch_on, switch_off, change_spin_dir)
-  testsystem.add_buttonpin_and_label(6, switch_on);
   testsystem.add_buttonpin_and_label(4, switch_off);
+  testsystem.add_buttonpin_and_label(6, thirty_percent);
   testsystem.add_buttonpin_and_label(7, change_spin_dir);
+  testsystem.add_buttonpin_and_label(8, fifty_percent);
+  testsystem.add_buttonpin_and_label(9, eighty_percent);
 
   // setup the Hbridgemotor
   int pwmmotorpin=11;
@@ -49,21 +52,22 @@ void loop()
 {
   int PWM_val_pass;
   testsystem.CheckInputsAndControlMotor_1();
-  int RPM = testsystem.getRPM();
+  int curr_RPM = testsystem.getRPM();
+  int target_RPM = testsystem.get_target();
+  
   if (controller.isTimeToTakeMeasurement())
   {
-    int PWM_val=  pid_test.PID_PWM(4800,RPM);
+    int PWM_val=  pid_test.PID_PWM(target_RPM,curr_RPM);
     PWM_val_pass = PWM_val;
-  //Serial.println(PWM_val);
-  //pid_test.set_echopidcontrol(1);
-  //pid_test.get_echopidcontrol();
+    pid_test2.print_task_3_vals(target_RPM, curr_RPM);
   }
   //Serial.println(PWM_val_pass);
   testsystem.setPWM(PWM_val_pass);
   
   //int PWM_val=  pid_test.PID_PWM(4800,RPM);
   //testsystem.setPWM(PWM_val);
-  //Serial.println(PWM_val);
+  Serial.print("Current RPM = ");
+  Serial.println(curr_RPM);
   pid_test.set_echopidcontrol(1);
   //pid_test.get_echopidcontrol();
 }
