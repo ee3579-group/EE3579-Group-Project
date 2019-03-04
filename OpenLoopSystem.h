@@ -480,7 +480,7 @@ protected:
 			return g_rise_time;														//Return to allow external access
 		}
 
-		double peak_vals_fun(int Target_Speed, int& current_output)														//Function to record peak value, and time of incident
+		double peak_vals_fun(int Target_Speed, int current_output)														//Function to record peak value, and time of incident
 		{
 			int current_RPM;
 			Time.setInterCheck(50);
@@ -498,26 +498,33 @@ protected:
 			
 			peak_time = timer;														//Record Time
 			peak_val_flag = true;													//Peak Value Flag is tripped
-			
+
 			return peak_val;
 		}
 
-		double min_vals_fun(int Target_Speed, int current_output)
+		double min_vals_fun(int Target_Speed, int current_output_1)
 		{
 			int current_RPM;
 			long timer;
+			double g_min_time;
 			Time.setInterCheck(50);
-			if (peak_val_flag)
-				timer = millis();										//Start timer					
-			int RPM = current_output;												//Obtain Current RPM
+			if (peak_val_flag) {
+				timer = millis();										//Start timer				
+				g_min_time = timer;
+			}
+			int RPM = current_output_1;												//Obtain Current RPM
 			int prev_RPM = RPM;													//Record RPM
 			if (Time.isMinChekTimeElapsed() == true)
 			{
-				current_RPM = current_output;
-			}									//Do it again									
-			if (current_RPM < prev_RPM)											//If measured value is less than previous value...
+				current_RPM = current_output_1;
+
+
+			}									//Do it again
+			
+			if (current_RPM <= prev_RPM)											//If measured value is less than previous value...
 				min_val = current_RPM;												//Record Value
-			min_time = timer;													//Record Time
+			min_time = g_min_time;													//Record Time
+			min_val_flag = true;
 			return min_val;														//Return to allow external access		
 		}
 
@@ -525,11 +532,15 @@ protected:
 		{
 			long timer = millis();										//Start timer	
 			int Current_RPM = current_output;										//Obtain Current RPM
-			int Target_RPM = Target_Speed;								//Obtain Target RPM
+			int Target_RPM = Target_Speed;
+			//Obtain Target RPM
 			//If value is within 10% tollerances, and minumum flag is tripped
-			if (((double)Current_RPM == 1.1*(double)Target_RPM || (double)Current_RPM == 0.9*(double)Target_RPM) && min_val_flag)
-				return settling_time;												//Return to allow external access
-		}
+			if ((((double)Current_RPM <= 1.1*(double)Target_RPM) && ((double)Current_RPM >= 0.9*(double)Target_RPM)) && min_val_flag == true){
+				settling_time = rise_time + timer;											//Return to allow external access
+			}
+			return settling_time;
+
+	}
 
 		void print_task_3_vals(int Target_Speed, int current_output)												//Function to print to serial monitor
 		{
