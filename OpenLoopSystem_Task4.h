@@ -409,7 +409,7 @@ protected:
 
 			if (echopidcontrol)
 			{
-				Serial.println();
+				/*Serial.println();
 				Serial.print("control interval ms ");
 				Serial.println(contr_inter_time_ms);
 				Serial.print("error ");
@@ -420,7 +420,7 @@ protected:
 				Serial.println(error_derivative);
 				Serial.print(" PWM output: ");
 				Serial.println(output);
-				Serial.println();
+				Serial.println();*/
 			}
 
 			last_control_ms = current_time;
@@ -444,7 +444,7 @@ protected:
 
 	};
 
-	class Task_3 {
+	/*class Task_3 {
 	protected:
 		PID_System PID;
 		OpenLoopSystem OLS;
@@ -570,21 +570,21 @@ protected:
 			Serial.println(settling_time_fun(inp_target_speed, inp_current_output));
 			
 		}
-	};
+	};*/
 
 	class Task_4 {
 
 	protected:
-		Task_3 PID_vals;
 		IntervalCheckTimer Time;
 		//controller_act2 controller;
 
 		int count = 0;
 
+
 		boolean sample_enabled;	// initialisation flag
 		//boolean pid_enabled;
 
-		static const int MAX_SIZE = 20;
+		static const int MAX_SIZE = 100;
 
 		int RPM_vals[MAX_SIZE];	// sampled values stored as char to save memory (need to be mapped)
 
@@ -595,6 +595,8 @@ protected:
 			sample_enabled = false;
 			//pid_enabled = false;
 		}
+
+		bool settling_flag;
 
 		void setupSampling(int sample_time)
 		{
@@ -635,15 +637,16 @@ protected:
 			int Target_RPM = Target_Speed;								//Obtain Target RPM
 			double settling_time;
 			//If value is within 10% tollerances, and minumum flag is tripped
-			if ((((double)Current_RPM == (1 + (percentage / 100))*(double)Target_RPM) && ((double)Current_RPM == (1 - (percentage / 100))*(double)Target_RPM)) && PID_vals.min_val_flag) {
-				settling_time = PID_vals.rise_time + timer;
+			if ((((double)Current_RPM == (1 + (percentage / 100))*(double)Target_RPM) && ((double)Current_RPM == (1 - (percentage / 100))*(double)Target_RPM))) {
+				settling_time = timer;
+				settling_flag = true;
 			}
 			return settling_time;												//Return to allow external access
 		}
 
 		void storeRPM(int current_RPM)
 		{
-			if (!PID_vals.get_settling_flag())
+			if (!settling_flag)
 			{
 				if (isEnabled())
 				{
@@ -656,13 +659,11 @@ protected:
 
 		void printData()
 		{
-			if (!PID_vals.get_settling_flag())
+			if (!settling_flag)
 			{
 				for (int i = 0; i < MAX_SIZE; i++)
 				{
-
 					Serial.println(RPM_vals[i]);
-
 				}
 			}
 			
